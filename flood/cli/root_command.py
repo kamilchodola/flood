@@ -29,10 +29,7 @@ help_message = """Load test JSON RPC endpoints
 - Can omit the [metavar]user@[/metavar] prefix if ssh config has username specified
 - [metavar]flood[/metavar] must already be installed on each remote machine
 
-[bold][title]Parameter Randomization[/bold][/title]
-- [metavar]flood[/metavar] can call each RPC method multiple times using [metavar]-n <N>[/metavar]
-- For each call, parameters are randomized to minimize caching effects
-- Specify random seed [metavar]-s <seed>[/metavar] for repeatable set of randomized calls"""  # noqa: E501
+For more details, see the [metavar]README.md[/metavar] at [metavar]https://github.com/paradigmxyz/cryo[/metavar]"""  # noqa: E501
 
 
 def get_command_spec() -> toolcli.CommandSpec:
@@ -42,18 +39,18 @@ def get_command_spec() -> toolcli.CommandSpec:
         'args': [
             {
                 'name': 'test',
-                'help': 'test to run (use [metavar]flood ls[/metavar] for list)',  # noqa: E501
+                'help': 'test to run (see [metavar]flood ls[/metavar] for list)',  # noqa: E501
             },
             {
                 'name': 'nodes',
                 'nargs': '*',
-                'help': 'nodes to test, see syntax above',
+                'help': 'nodes to test (see syntax above)',
             },
             {
                 'name': ['-s', '--seed'],
                 'dest': 'random_seed',
                 'type': int,
-                'help': 'random seed to use, default is current timestamp',
+                'help': 'random seed to use, (default = current timestamp)',
             },
             {
                 'name': ['-q', '--quiet'],
@@ -68,22 +65,23 @@ def get_command_spec() -> toolcli.CommandSpec:
             {
                 'name': ['-m', '--mode'],
                 'choices': ['stress', 'spike', 'soak'],
+                'hidden': True,
                 'help': 'load test type: stress, spike, or soak',
             },
             {
                 'name': ['-r', '--rates'],
                 'nargs': '+',
-                'help': 'rates to use in load test (requests per second)',
+                'help': 'rates to use in load test, units = reqs per second\n(default is test-specific, use [metavar]--dry[/metavar] to view)',  # noqa: E501
             },
             {
                 'name': ['-d', '--duration'],
                 'type': int,
-                'help': 'amount of time to test each rate',
+                'help': 'number of seconds to test each rate (default = [metavar]30[/metavar])',  # noqa: E501
             },
             {
                 'name': ['-o', '--output'],
                 'dest': 'output_dir',
-                'help': 'directory to save results, default is tmp dir',
+                'help': 'directory to save results, (default = new tmp dir)',
             },
             {
                 'name': ['--dry'],
@@ -93,7 +91,7 @@ def get_command_spec() -> toolcli.CommandSpec:
             {
                 'name': ['--metrics'],
                 'nargs': '+',
-                'help': 'space-separated list of performance metrics to show',
+                'help': 'space-separated list of performance metrics to show\n(default = [metavar]success throughput p90[/metavar])',  # noqa: E501
             },
             {
                 'name': ['--no-figures'],
@@ -103,12 +101,27 @@ def get_command_spec() -> toolcli.CommandSpec:
             },
             {
                 'name': ['--save-raw-output'],
-                'help': 'save raw output from Vegeta',
+                'help': 'save the contents of every RPC response',
                 'action': 'store_true',
             },
             {
                 'name': ['--deep-check'],
                 'help': 'validate the contents of every RPC response',
+                'action': 'store_true',
+            },
+            {
+                'name': ['--remote-update'],
+                'help': 'attempt to update nodes to latest flood version',
+                'hidden': True,
+                'action': 'store_true',
+            },
+            {
+                'name': ['--vegeta-args'],
+                'help': 'extra args for vegeta, e.g. [metavar]"-timeout 5s -cpus 1"[/metavar]\nfor single args, use [metavar]--vegeta-args="..."[/metavar] (no space)',  # noqa: E501
+            },
+            {
+                'name': ['-V', '--version'],
+                'help': 'print flood version and exit',
                 'action': 'store_true',
             },
         ],
@@ -135,7 +148,11 @@ def root_command(
     equality: bool,
     save_raw_output: bool,
     deep_check: bool,
+    remote_update: bool,
+    vegeta_args: str,
+    version: bool,
 ) -> None:
+
     verbose = not quiet
     if nodes is not None and len(nodes) == 0:
         nodes = None
@@ -163,6 +180,13 @@ def root_command(
         )
 
     else:
+
+        include_deep_output: typing.List[flood.DeepOutput] = []
+        if deep_check:
+            include_deep_output.append('metrics')
+        if save_raw_output:
+            include_deep_output.append('raw')
+
         if rates is not None:
             rates = [int(rate) for rate in rates]
         flood.run(
@@ -175,9 +199,10 @@ def root_command(
             rates=rates,
             duration=duration,
             dry=dry,
-            output_dir=output_dir or True,
+            output_dir=output_dir,
             figures=figures,
-            include_raw_output=save_raw_output,
+            include_deep_output=include_deep_output,
             deep_check=deep_check,
+            vegeta_args=vegeta_args,
         )
 

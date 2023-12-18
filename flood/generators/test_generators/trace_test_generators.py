@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 
 import flood
-from flood import spec
+from flood.tests import load_tests
 
 
 def generate_test_trace_block(
@@ -12,22 +12,23 @@ def generate_test_trace_block(
     rates: typing.Sequence[int],
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
-    vegeta_kwargs: typing.Mapping[str, str | None] | None = None,
-    random_seed: spec.RandomSeed | None = None,
-) -> spec.LoadTest:
-    n_calls = flood.estimate_call_count(
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
+    random_seed: flood.RandomSeed | None = None,
+) -> typing.Sequence[flood.VegetaAttack]:
+    n_calls = load_tests.estimate_call_count(
         rates=rates, duration=duration, durations=durations
     )
-    calls = flood.generate_calls_trace_block(
+    calls = flood.generators.generate_calls_trace_block(
         n_calls=n_calls,
         network=network,
         random_seed=random_seed,
     )
-    return flood.create_load_test(
+    return load_tests.create_load_test(
         calls=calls,
         rates=rates,
         duration=duration,
         durations=durations,
+        vegeta_args=vegeta_args,
     )
 
 
@@ -37,22 +38,23 @@ def generate_test_trace_transaction(
     rates: typing.Sequence[int],
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
-    vegeta_kwargs: typing.Mapping[str, str | None] | None = None,
-    random_seed: spec.RandomSeed | None = None,
-) -> spec.LoadTest:
-    n_calls = flood.estimate_call_count(
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
+    random_seed: flood.RandomSeed | None = None,
+) -> typing.Sequence[flood.VegetaAttack]:
+    n_calls = load_tests.estimate_call_count(
         rates=rates, duration=duration, durations=durations
     )
-    calls = flood.generate_calls_trace_transaction(
+    calls = flood.generators.generate_calls_trace_transaction(
         n_calls=n_calls,
         network=network,
         random_seed=random_seed,
     )
-    return flood.create_load_test(
+    return load_tests.create_load_test(
         calls=calls,
         rates=rates,
         duration=duration,
         durations=durations,
+        vegeta_args=vegeta_args,
     )
 
 
@@ -62,22 +64,23 @@ def generate_test_trace_replay_block_transactions(
     rates: typing.Sequence[int],
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
-    vegeta_kwargs: typing.Mapping[str, str | None] | None = None,
-    random_seed: spec.RandomSeed | None = None,
-) -> spec.LoadTest:
-    n_calls = flood.estimate_call_count(
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
+    random_seed: flood.RandomSeed | None = None,
+) -> typing.Sequence[flood.VegetaAttack]:
+    n_calls = load_tests.estimate_call_count(
         rates=rates, duration=duration, durations=durations
     )
-    calls = flood.generate_calls_trace_replay_block_transactions(
+    calls = flood.generators.generate_calls_trace_replay_block_transactions(
         n_calls=n_calls,
         network=network,
         random_seed=random_seed,
     )
-    return flood.create_load_test(
+    return load_tests.create_load_test(
         calls=calls,
         rates=rates,
         duration=duration,
         durations=durations,
+        vegeta_args=vegeta_args,
     )
 
 
@@ -87,22 +90,23 @@ def generate_test_trace_replay_block_transactions_state_diff(
     rates: typing.Sequence[int],
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
-    vegeta_kwargs: typing.Mapping[str, str | None] | None = None,
-    random_seed: spec.RandomSeed | None = None,
-) -> spec.LoadTest:
-    n_calls = flood.estimate_call_count(
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
+    random_seed: flood.RandomSeed | None = None,
+) -> typing.Sequence[flood.VegetaAttack]:
+    n_calls = load_tests.estimate_call_count(
         rates=rates, duration=duration, durations=durations
     )
-    calls = flood.generate_calls_trace_replay_block_transactions_state_diff(
+    calls = flood.generators.generate_calls_trace_replay_block_transactions_state_diff(  # noqa: E501
         n_calls=n_calls,
         network=network,
         random_seed=random_seed,
     )
-    return flood.create_load_test(
+    return load_tests.create_load_test(
         calls=calls,
         rates=rates,
         duration=duration,
         durations=durations,
+        vegeta_args=vegeta_args,
     )
 
 
@@ -112,22 +116,23 @@ def generate_test_trace_replay_block_transactions_vm_trace(
     rates: typing.Sequence[int],
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
-    vegeta_kwargs: typing.Mapping[str, str | None] | None = None,
-    random_seed: spec.RandomSeed | None = None,
-) -> spec.LoadTest:
-    n_calls = flood.estimate_call_count(
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
+    random_seed: flood.RandomSeed | None = None,
+) -> typing.Sequence[flood.VegetaAttack]:
+    n_calls = load_tests.estimate_call_count(
         rates=rates, duration=duration, durations=durations
     )
-    calls = flood.generate_calls_trace_replay_block_transactions_vm_trace(
+    calls = flood.generators.generate_calls_trace_replay_block_transactions_vm_trace(  # noqa: E501
         n_calls=n_calls,
         network=network,
         random_seed=random_seed,
     )
-    return flood.create_load_test(
+    return load_tests.create_load_test(
         calls=calls,
         rates=rates,
         duration=duration,
         durations=durations,
+        vegeta_args=vegeta_args,
     )
 
 
@@ -137,22 +142,23 @@ def generate_test_trace_replay_transaction(
     rates: typing.Sequence[int],
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
-    vegeta_kwargs: typing.Mapping[str, str | None] | None = None,
-    random_seed: spec.RandomSeed | None = None,
-) -> spec.LoadTest:
-    n_calls = flood.estimate_call_count(
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
+    random_seed: flood.RandomSeed | None = None,
+) -> typing.Sequence[flood.VegetaAttack]:
+    n_calls = load_tests.estimate_call_count(
         rates=rates, duration=duration, durations=durations
     )
-    calls = flood.generate_calls_trace_replay_transaction(
+    calls = flood.generators.generate_calls_trace_replay_transaction(
         n_calls=n_calls,
         network=network,
         random_seed=random_seed,
     )
-    return flood.create_load_test(
+    return load_tests.create_load_test(
         calls=calls,
         rates=rates,
         duration=duration,
         durations=durations,
+        vegeta_args=vegeta_args,
     )
 
 
@@ -162,22 +168,23 @@ def generate_test_trace_replay_transaction_state_diff(
     rates: typing.Sequence[int],
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
-    vegeta_kwargs: typing.Mapping[str, str | None] | None = None,
-    random_seed: spec.RandomSeed | None = None,
-) -> spec.LoadTest:
-    n_calls = flood.estimate_call_count(
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
+    random_seed: flood.RandomSeed | None = None,
+) -> typing.Sequence[flood.VegetaAttack]:
+    n_calls = load_tests.estimate_call_count(
         rates=rates, duration=duration, durations=durations
     )
-    calls = flood.generate_calls_trace_replay_transaction_state_diff(
+    calls = flood.generators.generate_calls_trace_replay_transaction_state_diff(
         n_calls=n_calls,
         network=network,
         random_seed=random_seed,
     )
-    return flood.create_load_test(
+    return load_tests.create_load_test(
         calls=calls,
         rates=rates,
         duration=duration,
         durations=durations,
+        vegeta_args=vegeta_args,
     )
 
 
@@ -187,20 +194,22 @@ def generate_test_trace_replay_transaction_vm_trace(
     rates: typing.Sequence[int],
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
-    vegeta_kwargs: typing.Mapping[str, str | None] | None = None,
-    random_seed: spec.RandomSeed | None = None,
-) -> spec.LoadTest:
-    n_calls = flood.estimate_call_count(
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
+    random_seed: flood.RandomSeed | None = None,
+) -> typing.Sequence[flood.VegetaAttack]:
+    n_calls = load_tests.estimate_call_count(
         rates=rates, duration=duration, durations=durations
     )
-    calls = flood.generate_calls_trace_replay_transaction_vm_trace(
+    calls = flood.generators.generate_calls_trace_replay_transaction_vm_trace(
         n_calls=n_calls,
         network=network,
         random_seed=random_seed,
     )
-    return flood.create_load_test(
+    return load_tests.create_load_test(
         calls=calls,
         rates=rates,
         duration=duration,
         durations=durations,
+        vegeta_args=vegeta_args,
     )
+

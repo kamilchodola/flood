@@ -11,7 +11,7 @@ cd_dir_help = {
 
 def cd_dir_getter(dirname: str) -> str:
     if dirname == 'samples':
-        return flood.get_flood_samples_dir()
+        return flood.generators.get_flood_samples_dir()
     else:
         raise Exception('unknown path: ' + str(dirname))
 
@@ -26,10 +26,9 @@ def run_cli(raw_command: str | None = None) -> None:
         ('samples', 'collect'): 'flood.cli.samples_collect_command',
         ('samples', 'download'): 'flood.cli.samples_download_command',
         ('samples', 'ls'): 'flood.cli.samples_ls_command',
-        (
-            'version',
-        ): 'toolcli.command_utils.standard_subcommands.version_command',
+        ('version',): 'flood.cli.version_command',
         ('cd',): 'toolcli.command_utils.standard_subcommands.cd_command',
+        ('update',): 'flood.cli.update_command',
     }
 
     config: toolcli.CLIConfig = {
@@ -40,7 +39,7 @@ def run_cli(raw_command: str | None = None) -> None:
         'root_help_arguments': True,
         # 'root_help_subcommands': False,
         'include_debug_arg': True,
-        'style_theme': flood.styles,
+        'style_theme': flood.user_io.styles,
         'cd_dir_help': cd_dir_help,
         'cd_dir_getter': cd_dir_getter,
     }

@@ -4,6 +4,7 @@ import typing
 
 import flood
 from flood import spec
+from . import outputs
 
 
 def get_ctc_alias_url(url: str) -> str | None:
@@ -26,7 +27,7 @@ def parse_nodes(
 ) -> typing.Mapping[str, spec.Node]:
     """parse given nodes according to input specification"""
     if verbose:
-        flood.print_header('Gathering node data...')
+        outputs.print_header('Gathering node data...')
 
     new_nodes: typing.MutableMapping[str, spec.Node] = {}
     if isinstance(nodes, list):
@@ -53,15 +54,18 @@ def print_nodes_table(nodes: typing.Mapping[str, spec.Node]) -> None:
         url = node['url']
         if node['remote'] is not None:
             url = node['remote'] + '\n' + url
+        client_version = node['client_version']
+        if client_version is not None:
+            client_version = client_version.replace('/', '\n')
         row = [
             node['name'],
             url,
-            node['client_version'],
+            client_version,
         ]
         rows.append(row)
     labels = ['node', 'url', 'metadata']
     print()
-    flood.print_multiline_table(
+    outputs.print_multiline_table(
         rows=rows,
         labels=labels,
         indent=4,
@@ -182,17 +186,17 @@ def get_node_client_version(url: str, remote: str | None = None) -> str | None:
 def parse_test_data(test: spec.LoadTest) -> spec.LoadTestColumnWise:
     rates = []
     durations = []
-    vegeta_kwargs = []
+    vegeta_args = []
     calls = []
-    for attack in test:
+    for attack in test['attacks']:
         rates.append(attack['rate'])
         durations.append(attack['duration'])
-        vegeta_kwargs.append(attack['vegeta_kwargs'])
+        vegeta_args.append(attack['vegeta_args'])
         calls.append(attack['calls'])
     return {
         'rates': rates,
         'durations': durations,
-        'vegeta_kwargs': vegeta_kwargs,
+        'vegeta_args': vegeta_args,
         'calls': calls,
     }
 

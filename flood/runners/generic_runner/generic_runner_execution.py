@@ -3,7 +3,9 @@ from __future__ import annotations
 import typing
 
 import flood
+from flood import generators
 from flood.runners.single_runner import single_runner_execution
+
 # from flood.runners.multi_runner import multi_runner_execution
 
 
@@ -17,19 +19,19 @@ def run(
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
     mode: flood.LoadTestMode | None = None,
-    vegeta_kwargs: flood.VegetaKwargsShorthand | None = None,
-    dry: bool,
-    output_dir: str | bool | None = None,
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
+    dry: bool = False,
+    output_dir: str | None = None,
     figures: bool = True,
     metrics: typing.Sequence[str] | None = None,
-    include_raw_output: bool = False,
+    include_deep_output: typing.Sequence[flood.DeepOutput] | None = None,
     deep_check: bool = False,
-) -> None:
+) -> flood.RunOutput:
     """generate and run tests against nodes"""
     import os
 
     # get output_dir
-    output_dir = _get_output_dir(output_dir)
+    use_output_dir = _get_output_dir(output_dir)
 
     # run test from path
     if os.path.exists(test_name) or '/' in test_name:
@@ -39,7 +41,7 @@ def run(
             test,
             nodes,
         ) = _load_old_test_data(test_name=test_name, nodes=nodes)
-        return single_runner_execution._run_single(
+        output = single_runner_execution._run_single(
             rerun_of=path_spec,
             test=test,
             #
@@ -47,55 +49,55 @@ def run(
             nodes=nodes,
             random_seed=random_seed,
             dry=dry,
-            output_dir=output_dir,
+            output_dir=use_output_dir,
             verbose=verbose,
             metrics=metrics,
             figures=figures,
-            include_raw_output=include_raw_output,
+            include_deep_output=include_deep_output,
             deep_check=deep_check,
         )
+        return {'single_run': output}
 
-    if nodes is None:
-        raise Exception('must specify nodes')
-
-    if test_name in flood.get_single_test_generators():
-        single_runner_execution._run_single(
-            rates=rates,
-            duration=duration,
-            durations=durations,
-            vegeta_kwargs=vegeta_kwargs,
-            #
-            test_name=test_name,
-            nodes=nodes,
-            random_seed=random_seed,
-            dry=dry,
-            output_dir=output_dir,
-            verbose=verbose,
-            metrics=metrics,
-            figures=figures,
-            include_raw_output=include_raw_output,
-            deep_check=deep_check,
-        )
-    elif test_name in flood.get_multi_test_generators():
-        raise NotImplementedError()
+    # generate new test
     else:
-        raise Exception('invalid test name')
+        if nodes is None:
+            raise Exception('must specify nodes')
+
+        if test_name in generators.get_single_test_generators():
+            output = single_runner_execution._run_single(
+                rates=rates,
+                duration=duration,
+                durations=durations,
+                vegeta_args=vegeta_args,
+                #
+                test_name=test_name,
+                nodes=nodes,
+                random_seed=random_seed,
+                dry=dry,
+                output_dir=use_output_dir,
+                verbose=verbose,
+                metrics=metrics,
+                figures=figures,
+                include_deep_output=include_deep_output,
+                deep_check=deep_check,
+            )
+            return {'single_run': output}
+        elif test_name in generators.get_multi_test_generators():
+            raise NotImplementedError('multi tests not supported yet')
+        else:
+            raise Exception('invalid test name')
 
 
-def _get_output_dir(output_dir: str | bool | None) -> str | None:
+def _get_output_dir(output_dir: str | None) -> str:
     import os
 
-    if isinstance(output_dir, bool):
-        if output_dir:
-            import tempfile
+    if output_dir is None:
+        import tempfile
 
-            output_dir = tempfile.mkdtemp()
-        else:
-            output_dir = None
-    if output_dir is not None:
-        output_dir = os.path.abspath(os.path.expanduser(output_dir))
-
-    return output_dir
+        use_output_dir = tempfile.mkdtemp()
+    else:
+        use_output_dir = output_dir
+    return os.path.abspath(os.path.expanduser(use_output_dir))
 
 
 def _load_old_test_data(
@@ -105,7 +107,7 @@ def _load_old_test_data(
 
     try:
         test_payload = flood.load_single_run_test_payload(path_spec)
-        test = test_payload['test']
+        test = generators.generate_test(**test_payload['test_parameters'])
         test_name = test_payload['name']
     except Exception:
         raise Exception('invalid test path: ' + str(path_spec))

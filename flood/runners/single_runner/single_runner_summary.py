@@ -11,7 +11,7 @@ def _print_single_run_preamble(
     test_name: str,
     rates: typing.Sequence[int],
     durations: typing.Sequence[int],
-    vegeta_kwargs: flood.VegetaKwargsShorthand | None,
+    vegeta_args: flood.VegetaArgsShorthand | None,
     rerun_of: str | None = None,
     output_dir: str | None,
 ) -> None:
@@ -23,7 +23,7 @@ def _print_single_run_preamble(
         rerun_of=rerun_of,
         rates=rates,
         durations=durations,
-        vegeta_kwargs=vegeta_kwargs,
+        vegeta_args=vegeta_args,
         output_dir=output_dir,
     )
     if output_dir is not None:
@@ -34,7 +34,7 @@ def _print_single_run_preamble(
                 rerun_of=rerun_of,
                 rates=rates,
                 durations=durations,
-                vegeta_kwargs=vegeta_kwargs,
+                vegeta_args=vegeta_args,
                 output_dir=output_dir,
             )
 
@@ -44,36 +44,35 @@ def _print_single_run_preamble_copy(
     test_name: str,
     rates: typing.Sequence[int],
     durations: typing.Sequence[int],
-    vegeta_kwargs: flood.VegetaKwargsShorthand | None,
+    vegeta_args: flood.VegetaArgsShorthand | None,
     rerun_of: str | None = None,
     output_dir: str | None,
 ) -> None:
     import toolstr
 
+    styles = flood.user_io.styles
+
     toolstr.print_text_box(
-        toolstr.add_style('Load test: ' + test_name, flood.styles['metavar']),
-        style=flood.styles['content'],
+        toolstr.add_style('Load test: ' + test_name, styles['metavar']),
+        style=flood.user_io.styles['content'],
     )
-    toolstr.print_bullet(key='sample rates', value=rates, styles=flood.styles)
+    toolstr.print_bullet(key='sample rates', value=rates, styles=styles)
     if len(set(durations)) == 1:
         toolstr.print_bullet(
             key='sample duration',
             value=durations[0],
-            styles=flood.styles,
+            styles=styles,
         )
     else:
         toolstr.print_bullet(
-            key='sample durations', value=durations, styles=flood.styles
+            key='sample durations', value=durations, styles=styles
         )
-    if vegeta_kwargs is None or len(vegeta_kwargs) == 0:
-        toolstr.print_bullet(key='extra args', value=None, styles=flood.styles)
+    toolstr.print_bullet(key='extra args', value=vegeta_args, styles=styles)
 
     if rerun_of is not None:
-        toolstr.print_bullet(
-            key='rerun of', value=rerun_of, styles=flood.styles
-        )
+        toolstr.print_bullet(key='rerun of', value=rerun_of, styles=styles)
     toolstr.print_bullet(
-        key='output directory', value=output_dir, styles=flood.styles
+        key='output directory', value=output_dir, styles=styles
     )
     print()
 
@@ -81,14 +80,16 @@ def _print_single_run_preamble_copy(
 def _print_run_start() -> None:
     import toolstr
 
+    styles = flood.user_io.styles
+
     print()
     print()
     toolstr.print_header(
         'Running load tests...',
-        style=flood.styles['content'],
-        text_style=flood.styles['metavar'],
+        style=styles['content'],
+        text_style=styles['metavar'],
     )
-    flood.print_timestamped('Starting')
+    flood.user_io.print_timestamped('Starting')
 
 
 def _print_single_run_conclusion(
@@ -98,13 +99,15 @@ def _print_single_run_conclusion(
     metrics: typing.Sequence[str] | None,
     verbose: bool | int,
     figures: bool,
+    deep_check: bool,
 ) -> None:
-    _print_single_run_conclusion_copy(
+    _print_single_run_conclusion_text(
         output_dir=output_dir,
         results=results,
         metrics=metrics,
         verbose=verbose,
         figures=figures,
+        deep_check=deep_check,
     )
     if output_dir is not None:
         import os
@@ -112,26 +115,30 @@ def _print_single_run_conclusion(
 
         summary_path = os.path.join(output_dir, 'summary.txt')
         with toolstr.write_stdout_to_file(summary_path, mode='a'):
-            _print_single_run_conclusion_copy(
+            _print_single_run_conclusion_text(
                 output_dir=output_dir,
                 results=results,
                 metrics=metrics,
                 verbose=verbose,
                 figures=figures,
+                deep_check=deep_check,
             )
 
 
-def _print_single_run_conclusion_copy(
+def _print_single_run_conclusion_text(
     output_dir: str | None,
     results: typing.Mapping[str, flood.LoadTestOutput],
     metrics: typing.Sequence[str] | None,
     verbose: bool | int,
     figures: bool,
+    deep_check: bool,
 ) -> None:
     import os
     import toolstr
 
-    flood.print_timestamped(' Load tests completed.')
+    styles = flood.user_io.styles
+
+    flood.user_io.print_timestamped('Load tests completed.')
 
     # print message about metrics file
     if output_dir is not None:
@@ -147,25 +154,25 @@ def _print_single_run_conclusion_copy(
 
         print()
         print()
-        flood.print_header('Saving results...')
+        flood.user_io.print_header('Saving results to output directory...')
         toolstr.print_bullet(
             key=os.path.relpath(test_path, output_dir),
             value='',
             colon_str='',
-            styles=flood.styles,
+            styles=styles,
         )
         toolstr.print_bullet(
             key=os.path.relpath(result_path, output_dir),
             value='',
             colon_str='',
-            styles=flood.styles,
+            styles=styles,
         )
         if figures:
             toolstr.print_bullet(
                 key=os.path.relpath(figures_path, output_dir),
                 value='',
                 colon_str='',
-                styles=flood.styles,
+                styles=styles,
             )
 
     # decide metrics
@@ -175,12 +182,12 @@ def _print_single_run_conclusion_copy(
     # print metrics
     print()
     print()
-    flood.print_header('Summarizing performance metrics...')
+    flood.user_io.print_header('Summarizing performance metrics...')
     if verbose > 1:
         toolstr.print_bullet(
             key='metrics shown below',
             value=', '.join(metrics),
-            styles=flood.styles,
+            styles=styles,
         )
         example_result = list(results.values())[0]
         additional = [
@@ -189,51 +196,63 @@ def _print_single_run_conclusion_copy(
         toolstr.print_bullet(
             key='additional metrics available',
             value=', '.join(additional),
-            styles=flood.styles,
+            styles=styles,
         )
 
     # print metric values
     print()
-    flood.print_metric_tables(results=results, metrics=metrics, indent=4)
+    flood.user_io.print_metric_tables(
+        results=results, metrics=metrics, indent=4
+    )
 
     # deep inspection tables
-    import polars as pl
+    if deep_check:
+        print()
+        print()
+        flood.user_io.print_header('Deep inspection of responses...')
 
-    example_output = next(iter(results.values()))
-    if (
-        example_output.get('raw_output') is not None
-        and example_output['raw_output'][0] is not None
-    ):
-        dfs = flood.load_single_run_raw_output(
-            results=results,
-            sample_index=list(range(len(example_output['raw_output']))),
-        )
-        success_dfs = {
-            name: df.filter(pl.col('status_code') == 200)
-            for name, df in dfs.items()
-        }
-        fail_dfs = {
-            name: df.filter(pl.col('status_code') != 200)
-            for name, df in dfs.items()
-        }
-        success_deep_outputs = flood.compute_raw_output_metrics(
-            raw_output=success_dfs, results=results
-        )
-        fail_deep_outputs = flood.compute_raw_output_metrics(
-            raw_output=fail_dfs, results=results
-        )
+        # extract data per category
+        deep_results_by_category: typing.MutableMapping[
+            flood.ResponseCategory,
+            typing.MutableMapping[str, flood.LoadTestDeepOutput],
+        ]
+        deep_results_by_category = {}
+        for result_name, result in results.items():
+            deep_metrics = result['deep_metrics']
+            if deep_metrics is not None:
+                for category, category_results in deep_metrics.items():
+                    deep_results_by_category.setdefault(category, {})
+                    deep_results_by_category[category][
+                        result_name
+                    ] = category_results
+            else:
+                raise Exception('deep metrics not available')
+
         print()
-        flood.print_metric_tables(
-            results=success_deep_outputs,
-            metrics=[m for m in metrics if m not in ['success', 'throughput']],
-            suffix=', successful calls',
+        flood.user_io.print_metric_tables(
+            results=deep_results_by_category['failed'],
+            metrics=['n_invalid_json_errors'],
             indent=4,
         )
         print()
-        flood.print_metric_tables(
-            results=fail_deep_outputs,
-            metrics=[m for m in metrics if m not in ['success', 'throughput']],
-            suffix=', failed calls',
+        flood.user_io.print_metric_tables(
+            results=deep_results_by_category['failed'],
+            metrics=['n_rpc_errors'],
             indent=4,
         )
+
+        metric_names = [
+            m for m in metrics if m not in ['success', 'throughput']
+        ]
+        for (
+            category,
+            result_category_results,
+        ) in deep_results_by_category.items():
+            print()
+            flood.user_io.print_metric_tables(
+                results=result_category_results,
+                metrics=metric_names,
+                suffix=', ' + category + ' calls',
+                indent=4,
+            )
 

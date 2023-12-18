@@ -4,9 +4,10 @@ import typing
 
 import flood
 
-if typing.TYPE_CHECKING:
-    import polars as pl
 
+#
+# # path utiltiies
+#
 
 _path_templates = {
     'single_run_test': '{output_dir}/test.json',
@@ -29,13 +30,18 @@ def get_single_run_figures_path(output_dir: str) -> str:
     )
 
 
+#
+# # save utilities
+#
+
+
 def _save_single_run_test(
     test_name: str,
     output_dir: str,
-    test: flood.LoadTest,
+    test_parameters: flood.TestGenerationParameters,
 ) -> None:
     import os
-    import json
+    import orjson
 
     if not os.path.isdir(output_dir):
         if os.path.exists(output_dir):
@@ -45,26 +51,29 @@ def _save_single_run_test(
 
     path = _path_templates['single_run_test'].format(output_dir=output_dir)
     payload: flood.SingleRunTestPayload = {
-        'version': flood.__version__,
+        'flood_version': flood.__version__,
         'type': 'single_test',
         'name': test_name,
-        'test': test,
+        'test_parameters': test_parameters,
     }
-    with open(path, 'w') as f:
-        json.dump(payload, f)
+    with open(path, 'wb') as f:
+        f.write(orjson.dumps(payload))
 
 
 def _save_single_run_results(
     *,
     output_dir: str,
-    test: flood.LoadTest,
     nodes: flood.Nodes,
     results: typing.Mapping[str, flood.LoadTestOutput],
     figures: bool,
     test_name: str,
-) -> None:
+    t_run_start: float,
+    t_run_end: float,
+) -> flood.SingleRunResultsPayload:
     import os
-    import json
+    import sys
+
+    import orjson
 
     if not os.path.isdir(output_dir):
         if os.path.exists(output_dir):
@@ -74,101 +83,72 @@ def _save_single_run_results(
 
     path = _path_templates['single_run_results'].format(output_dir=output_dir)
     payload: flood.SingleRunResultsPayload = {
-        'version': flood.__version__,
+        'flood_version': flood.get_flood_version(),
+        'dependency_versions': flood.get_dependency_versions(),
+        'cli_args': list(sys.argv),
         'type': 'single_test',
+        't_run_start': t_run_start,
+        't_run_end': t_run_end,
         'nodes': nodes,
         'results': results,
     }
-    with open(path, 'w') as f:
-        json.dump(payload, f)
+    with open(path, 'wb') as f:
+        f.write(orjson.dumps(payload))
 
     if figures:
         figures_dir = get_single_run_figures_path(output_dir=output_dir)
-        colors = flood.get_nodes_plot_colors(nodes=nodes)
-        flood.plot_load_test_results(
+        colors = flood.user_io.get_nodes_plot_colors(nodes=nodes)
+        flood.tests.load_tests.plot_load_test_results(
             outputs=results,
             test_name=test_name,
             output_dir=figures_dir,
             colors=colors,
         )
 
+    return payload
+
+
+#
+# # load utiltiies
+#
+
 
 def load_single_run_test_payload(
     path_spec: str,
+    allow_other_versions: bool = False,
 ) -> flood.SingleRunTestPayload:
     import os
-    import json
+    import orjson
 
     if os.path.isfile(path_spec):
         path = path_spec
     else:
         path = get_single_run_test_path(path_spec)
-    with open(path) as f:
-        test: flood.SingleRunTestPayload = json.load(f)
+    with open(path, 'rb') as f:
+        test: flood.SingleRunTestPayload = orjson.loads(f.read())
+
+    if test['flood_version'] != flood.__version__:
+        if allow_other_versions:
+            pass
+        else:
+            raise Exception(
+                'loaded test version ('
+                + str(test['flood_version'])
+                + ') does not match current flood version ('
+                + flood.__version__
+                + ')'
+            )
+
     return test
-
-
-def load_single_run_test(
-    output_dir: str,
-) -> flood.LoadTest:
-    payload = load_single_run_test_payload(output_dir)
-    return payload['test']
 
 
 def load_single_run_results_payload(
     output_dir: str,
 ) -> flood.SingleRunResultsPayload:
-    import json
+    import orjson
 
     path = get_single_run_results_path(output_dir=output_dir)
-    with open(path) as f:
-        results: flood.SingleRunResultsPayload = json.load(f)
+    with open(path, 'rb') as f:
+        results: flood.SingleRunResultsPayload = orjson.loads(f.read())
     return results
-
-
-def load_single_run_results(
-    output_dir: str,
-) -> typing.Mapping[str, flood.LoadTestOutput]:
-    payload = load_single_run_results_payload(output_dir=output_dir)
-    return payload['results']
-
-
-def load_single_run_raw_output(
-    *,
-    output_dir: str | None = None,
-    results: typing.Mapping[str, flood.LoadTestOutput] | None = None,
-    sample_index: int | typing.Sequence[int] | None = None,
-) -> typing.Mapping[str, pl.DataFrame]:
-    import polars as pl
-
-    if results is None:
-        if output_dir is None:
-            raise Exception('must specify output_dir or results')
-        results = load_single_run_results(output_dir=output_dir)
-    node_dfs = {}
-    for node_name, node_results in results.items():
-        raw_output = node_results['raw_output']
-        if raw_output is None:
-            raise Exception('raw_outputs were not saved for test')
-        else:
-            if sample_index is not None:
-                if isinstance(sample_index, int):
-                    indices = [sample_index]
-                elif isinstance(sample_index, list):
-                    indices = sample_index
-                else:
-                    raise Exception('invalid format for sample_index')
-            else:
-                indices = list(range(len(raw_output)))
-            dfs = []
-            for index in indices:
-                item = raw_output[index]
-                if item is None:
-                    raise Exception('raw_outputs were not saved for test')
-                decoded = flood.decode_raw_vegeta_output(item)
-                df = flood.convert_raw_vegeta_output_to_dataframe(decoded)
-                df = df.with_columns(pl.lit(index).alias('sample_index'))
-                dfs.append(df)
-            node_dfs[node_name] = pl.concat(dfs)
-    return node_dfs
 

@@ -109,12 +109,12 @@ def _get_tqdm() -> types.ModuleType:
 
 
 def print_metric_tables(
-    results: typing.Mapping[str, spec.LoadTestOutput],
+    results: typing.Mapping[str, spec.LoadTestOutput | spec.LoadTestDeepOutput],
     metrics: typing.Sequence[str],
     *,
     suffix: str = '',
     decimals: int | None = None,
-    comparison: bool = False,
+    comparison: bool | None = None,
     indent: int | str | None = None,
 ) -> None:
     import toolstr
@@ -122,13 +122,17 @@ def print_metric_tables(
     if len(results) == 0:
         toolstr.print('no results', indent=indent)
         print()
+    if comparison is None:
+        comparison = len(results) == 2
 
     names = list(results.keys())
     rates = results[names[0]]['target_rate']
     for metric in metrics:
         # create labels
-        if metric == 'success':
+        if metric in ['success', 'n_invalid_json_errors', 'n_rpc_errors']:
             metric_suffix = ''
+        elif metric == 'throughput':
+            metric_suffix = ' (rps)'
         else:
             metric_suffix = ' (s)'
         unitted_names = [name + metric_suffix for name in names]
@@ -172,19 +176,25 @@ def print_metric_tables(
         # print header
         toolstr.print_text_box(
             toolstr.add_style(
-                metric + ' vs load' + suffix, flood.styles.get('metavar')
+                metric + ' vs load' + suffix, styles.get('metavar')
             ),
-            style=flood.styles.get('content'),
+            style=styles.get('content'),
             indent=indent,
         )
+
+        if metric == 'success':
+            for label in labels[1:]:
+                column_formats.setdefault(label, {})
+                column_formats[label]['percentage'] = True
+                column_formats[label]['decimals'] = 1
 
         # print table
         toolstr.print_table(
             rows,
             labels=labels,
             column_formats=column_formats,  # type: ignore
-            label_style=flood.styles.get('metavar'),
-            border=flood.styles.get('content'),
+            label_style=styles.get('metavar'),
+            border=styles.get('content'),
             indent=indent,
         )
         if metric != metrics[-1]:
@@ -201,8 +211,8 @@ def print_text_box(text: str) -> None:
 
     toolstr.print_text_box(
         text,
-        text_style=flood.styles.get('metavar'),
-        style=flood.styles.get('content'),
+        text_style=styles.get('metavar'),
+        style=styles.get('content'),
     )
 
 
@@ -211,8 +221,8 @@ def print_header(text: str) -> None:
 
     toolstr.print_header(
         text,
-        text_style=flood.styles.get('metavar'),
-        style=flood.styles.get('content'),
+        text_style=styles.get('metavar'),
+        style=styles.get('content'),
     )
 
 
@@ -222,7 +232,7 @@ def print_bullet(*args: typing.Any, **kwargs: typing.Any) -> None:
     toolstr.print_bullet(
         *args,
         **kwargs,
-        styles=flood.styles,
+        styles=styles,
     )
 
 
@@ -232,8 +242,8 @@ def print_table(*args: typing.Any, **kwargs: typing.Any) -> None:
     toolstr.print_table(
         *args,
         **kwargs,
-        label_style=flood.styles.get('metavar'),
-        border=flood.styles.get('content'),
+        label_style=styles.get('metavar'),
+        border=styles.get('content'),
     )
 
 
@@ -243,8 +253,8 @@ def print_multiline_table(*args: typing.Any, **kwargs: typing.Any) -> None:
     toolstr.print_multiline_table(
         *args,
         **kwargs,
-        label_style=flood.styles.get('metavar'),
-        border=flood.styles.get('content'),
+        label_style=styles.get('metavar'),
+        border=styles.get('content'),
     )
 
 
@@ -258,9 +268,14 @@ def print_timestamped(message: str) -> None:
     else:
         dt = dt - datetime.timedelta(microseconds=dt.microsecond)
     timestamp = (
-        toolstr.add_style('\[', flood.styles['content'])
-        + toolstr.add_style(str(dt), flood.styles['metavar'])
-        + toolstr.add_style(']', flood.styles['content'])
+        toolstr.add_style('\[', styles['content'])
+        + toolstr.add_style(str(dt), styles['metavar'])
+        + toolstr.add_style(']', styles['content'])
     )
     toolstr.print(timestamp + ' ' + message)
+
+
+def disable_text_colors() -> None:
+    for key in list(styles.keys()):
+        del styles[key]  # type: ignore
 

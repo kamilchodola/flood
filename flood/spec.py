@@ -79,23 +79,35 @@ if typing.TYPE_CHECKING:
         rate: int
         duration: int
         calls: typing.Sequence[typing.Any]
-        vegeta_kwargs: typing.Mapping[str, typing.Any]
+        vegeta_args: VegetaArgs
 
-    VegetaKwargs = typing.Mapping[str, typing.Union[str, None]]
-    MultiVegetaKwargs = typing.Sequence[VegetaKwargs]
-    VegetaKwargsShorthand = typing.Union[VegetaKwargs, MultiVegetaKwargs]
+    VegetaArgs = typing.Union[str, None]
+    MultiVegetaArgs = typing.Sequence[VegetaArgs]
+    VegetaArgsShorthand = typing.Union[VegetaArgs, MultiVegetaArgs]
 
-    LoadTest = typing.Sequence[VegetaAttack]
+    class TestGenerationParameters(typing.TypedDict):
+        flood_version: str
+        test_name: str
+        random_seed: RandomSeed | None
+        rates: typing.Sequence[int] | None
+        durations: typing.Sequence[int] | None
+        vegeta_args: VegetaArgsShorthand | None
+        network: str
+
+    # LoadTest = typing.Sequence[VegetaAttack]
+    class LoadTest(typing.TypedDict):
+        test_parameters: TestGenerationParameters
+        attacks: typing.Sequence[VegetaAttack]
 
     class LoadTestColumnWise(typing.TypedDict):
         rates: typing.Sequence[int]
         durations: typing.Sequence[int]
         calls: typing.Sequence[typing.Sequence[typing.Any]]
-        vegeta_kwargs: typing.Sequence[typing.Any]
+        vegeta_args: typing.Sequence[typing.Any]
 
     LoadTestMode = typing.Literal['stress', 'spike', 'soak']
 
-    LoadTestGenerator = typing.Callable[..., LoadTest]
+    LoadTestGenerator = typing.Callable[..., typing.Sequence[VegetaAttack]]
     MultiLoadTestGenerator = typing.Callable[..., typing.Mapping[str, LoadTest]]
 
     #
@@ -143,7 +155,40 @@ if typing.TYPE_CHECKING:
         last_request_timestamp: str | None
         last_response_timestamp: str | None
         final_wait_time: float | None
-        raw_output: str | None
+        # additional deep keys
+        deep_raw_output: str | None
+        deep_metrics: typing.Mapping[
+            ResponseCategory, LoadTestDeepOutputDatum
+        ] | None
+        deep_rpc_error_pairs: typing.Sequence[ErrorPair] | None
+
+    ResponseCategory = typing.Literal['all', 'successful', 'failed']
+    ErrorPair = tuple[typing.Any, typing.Any]
+
+    class LoadTestDeepOutputDatum(typing.TypedDict):
+        target_rate: int
+        actual_rate: float | None
+        target_duration: int
+        actual_duration: float | None
+        requests: int
+        throughput: float | None
+        success: float | None
+        min: float | None
+        mean: float | None
+        p50: float | None
+        p90: float | None
+        p95: float | None
+        p99: float | None
+        max: float | None
+        status_codes: typing.Mapping[str, int]
+        errors: typing.Sequence[str]
+        first_request_timestamp: str | None
+        last_request_timestamp: str | None
+        last_response_timestamp: str | None
+        final_wait_time: float | None
+        # additional deep keys:
+        n_invalid_json_errors: int
+        n_rpc_errors: int
 
     class LoadTestOutput(typing.TypedDict):
         target_rate: typing.Sequence[int]
@@ -166,18 +211,82 @@ if typing.TYPE_CHECKING:
         last_request_timestamp: typing.Sequence[str | None]
         last_response_timestamp: typing.Sequence[str | None]
         final_wait_time: typing.Sequence[float | None]
-        raw_output: typing.Sequence[str | None]
+        # additional deep keys
+        deep_raw_output: typing.Sequence[str | None] | None
+        deep_metrics: typing.Mapping[
+            ResponseCategory, LoadTestDeepOutput
+        ] | None
+        deep_rpc_error_pairs: typing.Sequence[
+            typing.Sequence[ErrorPair] | None
+        ] | None
 
-    RunType = typing.Literal['single_test']
+    class LoadTestDeepOutput(typing.TypedDict):
+        target_rate: typing.Sequence[int]
+        actual_rate: typing.Sequence[float | None]
+        target_duration: typing.Sequence[int]
+        actual_duration: typing.Sequence[float | None]
+        requests: typing.Sequence[int]
+        throughput: typing.Sequence[float | None]
+        success: typing.Sequence[float | None]
+        min: typing.Sequence[float | None]
+        mean: typing.Sequence[float | None]
+        p50: typing.Sequence[float | None]
+        p90: typing.Sequence[float | None]
+        p95: typing.Sequence[float | None]
+        p99: typing.Sequence[float | None]
+        max: typing.Sequence[float | None]
+        status_codes: typing.Sequence[typing.Mapping[str, int]]
+        errors: typing.Sequence[typing.Sequence[str]]
+        first_request_timestamp: typing.Sequence[str | None]
+        last_request_timestamp: typing.Sequence[str | None]
+        last_response_timestamp: typing.Sequence[str | None]
+        final_wait_time: typing.Sequence[float | None]
+        # additional deep keys:
+        n_invalid_json_errors: typing.Sequence[int]
+        n_rpc_errors: typing.Sequence[int]
+
+    RunType = typing.Literal['single_test']  # noqa: F821
+    DeepOutput = typing.Literal['raw', 'metrics']
 
     class SingleRunTestPayload(typing.TypedDict):
-        version: str
+        flood_version: str
         type: RunType
         name: str
-        test: LoadTest
+        test_parameters: TestGenerationParameters
 
     class SingleRunResultsPayload(typing.TypedDict):
-        version: str
+        flood_version: str
+        dependency_versions: typing.Mapping[str, str | None]
+        cli_args: typing.Sequence[str]
         type: RunType
+        t_run_start: float
+        t_run_end: float
         nodes: Nodes
         results: typing.Mapping[str, LoadTestOutput]
+
+    # runner outputs
+
+    class RunOutput(typing.TypedDict):
+        single_run: SingleRunOutput
+
+    class SingleRunOutput(typing.TypedDict):
+        output_dir: str
+        test: LoadTest | None
+        test_parameters: TestGenerationParameters
+        payload: SingleRunResultsPayload
+
+    #
+    # # env / ops management
+    #
+
+    class FloodInstallation(typing.TypedDict):
+        vegeta_path: str | None
+        flood_version: str | None
+        git_dir: str | None
+        git_commit: str | None
+        semver: str | None
+
+
+class SshError(Exception):
+    pass
+

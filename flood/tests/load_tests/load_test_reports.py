@@ -28,24 +28,25 @@ def create_load_test_report(
 def print_load_test_summary(test: flood.LoadTest) -> None:
     import toolstr
 
-    parsed = flood.parse_test_data(test)
+    parsed = flood.user_io.parse_test_data(test)
     rates = parsed['rates']
     durations = parsed['durations']
-    vegeta_kwargs = parsed['vegeta_kwargs']
+    vegeta_args = parsed['vegeta_args']
+    styles = flood.user_io.styles
 
-    toolstr.print_bullet(key='sample rates', value=rates, styles=flood.styles)
+    toolstr.print_bullet(key='sample rates', value=rates, styles=styles)
     if len(set(durations)) == 1:
         toolstr.print_bullet(
             key='sample duration',
             value=durations[0],
-            styles=flood.styles,
+            styles=styles,
         )
     else:
         toolstr.print_bullet(
-            key='sample durations', value=durations, styles=flood.styles
+            key='sample durations', value=durations, styles=styles
         )
-    if vegeta_kwargs is None or len(vegeta_kwargs) == 0:
-        toolstr.print_bullet(key='extra args', value=None, styles=flood.styles)
+    if vegeta_args is None or len(vegeta_args) == 0:
+        toolstr.print_bullet(key='extra args', value=None, styles=styles)
 
 
 def _create_load_test_report_html(
@@ -155,6 +156,137 @@ def _create_test_chunk(
     )
 
 
+def print_tests_timing(
+    results_payloads: typing.Mapping[str, flood.SingleRunResultsPayload]
+) -> None:
+    import tooltime
+    import toolstr
+
+    time_per_test = {}
+
+    for test_name in results_payloads:
+        results = results_payloads[test_name]["results"]
+        time_per_test[test_name] = 0.0
+        for condition_name in results.keys():
+            time = sum(
+                item
+                for item in results[condition_name]["actual_duration"]
+                if item is not None
+            ) + sum(
+                item
+                for item in results[condition_name]["final_wait_time"]
+                if item is not None
+            )
+            time_per_test[test_name] = float(time_per_test[test_name] + time)
+
+    test_timing_rows = []
+    t_load_total = 0.0
+    for test_name, payload in results_payloads.items():
+        t_load_total += payload["t_run_end"] - payload["t_run_start"]
+        row = [
+            test_name,
+            payload["t_run_end"] - payload["t_run_start"],
+            time_per_test[test_name],
+            tooltime.timestamp_to_iso_pretty(payload["t_run_start"]).replace(
+                " ", "\n"
+            ),
+            tooltime.timestamp_to_iso_pretty(payload["t_run_end"]).replace(
+                " ", "\n"
+            ),
+        ]
+        test_timing_rows.append(row)
+
+    total_row = ['TOTAL', t_load_total, sum(time_per_test.values()), None, None]
+    test_timing_rows.append(total_row)
+
+    toolstr.print_text_box("Test timing")
+    print("(includes setup and cleanup steps)")
+    toolstr.print_multiline_table(
+        test_timing_rows,
+        labels=[
+            "test",
+            "total\nduration",
+            'load test\nduration',
+            "t_start",
+            "t_end",
+        ],
+        column_formats={
+            'load test\nduration': {'postfix': ' s'},
+            'total\nduration': {'postfix': ' s'},
+        },
+    )
+
+
+def print_tests_cli_commands(
+    results_payloads: typing.Mapping[str, flood.SingleRunResultsPayload]
+) -> None:
+    import toolstr
+
+    toolstr.print_text_box('CLI commands used for each test')
+    for test_name, payload in results_payloads.items():
+        toolstr.print_header(test_name)
+        args = payload['cli_args']
+        args = ['"' + arg + '"' if ' ' in arg else arg for arg in args]
+        print(' '.join(args))
+
+
+def print_tests_nodes(
+    results_payloads: typing.Mapping[str, flood.SingleRunResultsPayload]
+) -> None:
+    import json
+    import toolstr
+
+    nodes_per_test = {}
+    for test_name, payload in results_payloads.items():
+        nodes_per_test[test_name] = payload['nodes']
+    n_unique_node_sets = len(
+        set(
+            json.dumps(nodes, sort_keys=True)
+            for nodes in nodes_per_test.values()
+        )
+    )
+    toolstr.print_text_box('Nodes Used')
+    if n_unique_node_sets == 1:
+        flood.user_io.print_nodes_table(nodes_per_test[test_name])
+    else:
+        for test_name, nodes_used in nodes_per_test.items():
+            flood.user_io.print_header(test_name)
+            flood.user_io.print_nodes_table(nodes_used)
+            print()
+
+
+def print_tests_versions(
+    results_payloads: typing.Mapping[str, flood.SingleRunResultsPayload]
+) -> None:
+    import json
+    import toolstr
+
+    deps_per_test = {}
+    for test_name, payload in results_payloads.items():
+        deps_per_test[test_name] = payload['dependency_versions']
+    n_unique_flood_versions = len(
+        set(payload['flood_version'] for payload in results_payloads.values())
+    )
+    n_unique_deps_sets = len(
+        set(json.dumps(deps, sort_keys=True) for deps in deps_per_test.values())
+    )
+    toolstr.print_text_box('Versions Used')
+    if n_unique_flood_versions == 1 and n_unique_deps_sets == 1:
+        print('flood version:', results_payloads[test_name]['flood_version'])
+        print()
+        toolstr.print_table(
+            list(deps_per_test[test_name].items()),
+            labels=['dependency', 'version'],
+        )
+    else:
+        print('flood version:', results_payloads[test_name]['flood_version'])
+        print()
+        for test_name, deps_used in deps_per_test.items():
+            flood.user_io.print_header(test_name)
+            toolstr.print_table(list(deps_used.items()))
+            print()
+
+
 if typing.TYPE_CHECKING:
     from flood.user_io import notebook_io
 
@@ -176,7 +308,7 @@ _report_template_cells: notebook_io.NotebookTemplate = [
 
             import flood
 
-            flood.styles = {{}}
+            flood.user_io.disable_text_colors()
         """,
         'inputs': [],
     },
@@ -223,37 +355,35 @@ _report_template_cells: notebook_io.NotebookTemplate = [
         'inputs': [],
     },
     {
-        # test durations
+        # test list
         'type': 'code',
         'content': """
-            # test durations
-
-            time_per_test = {{}}
-            time_per_condition = {{}}
-
-            for test_name in results_payloads:
-                results = results_payloads[test_name]["results"]
-                time_per_test[test_name] = 0
-                for condition_name in results.keys():
-                    time_per_condition.setdefault(condition_name, 0)
-                    time = sum(results[condition_name]["actual_duration"]) + sum(
-                        results[condition_name]["final_wait_time"]
-                    )
-                    time_per_test[test_name] += time
-                    time_per_condition[condition_name] += time
-
-            toolstr.print_text_box('Total time')
-            toolstr.print(tooltime.timelength_to_phrase(int(sum(time_per_test.values()))))
-            print()
-
-            toolstr.print_text_box('Total time per test')
-            rows = list(time_per_test.items())
-            toolstr.print_table(rows, labels=['test', 'time (s)'])
-
-            toolstr.print_text_box('Total time per condition')
-            rows = list(time_per_condition.items())
-            toolstr.print_table(rows, labels=['condition', 'time (s)'])
-        """,  # noqa: E501
+            flood.tests.print_tests_timing(results_payloads)
+        """,
+        'inputs': [],
+    },
+    {
+        # test list
+        'type': 'code',
+        'content': """
+            flood.tests.print_tests_cli_commands(results_payloads)
+        """,
+        'inputs': [],
+    },
+    {
+        # test list
+        'type': 'code',
+        'content': """
+            flood.tests.print_tests_nodes(results_payloads)
+        """,
+        'inputs': [],
+    },
+    {
+        # test list
+        'type': 'code',
+        'content': """
+            flood.tests.print_tests_versions(results_payloads)
+        """,
         'inputs': [],
     },
     {
@@ -285,6 +415,7 @@ _test_template_cells: notebook_io.NotebookTemplate = [
             # load test results
 
             test_name = '{test_name}'
+            test_payload = test_payloads[test_name]
             results_payload = results_payloads[test_name]
             results = results_payload['results']
         """,
@@ -297,7 +428,8 @@ _test_template_cells: notebook_io.NotebookTemplate = [
             # show test metadata
 
             toolstr.print_text_box(test_name + ' parameters')
-            flood.print_load_test_summary(results_payload['test'])
+            test = flood.generate_test(**test_payload['test_parameters'])
+            flood.tests.load_tests.print_load_test_summary(test)
             toolstr.print('- nodes tested:')
             nodes_df = pl.from_records(list(results_payload['nodes'].values()))
             toolstr.print_dataframe_as_table(nodes_df)
@@ -310,8 +442,8 @@ _test_template_cells: notebook_io.NotebookTemplate = [
         'content': """
             # show result tables
 
-            flood.print_metric_tables(results, metrics=metrics, comparison=True)
-        """,
+            flood.user_io.print_metric_tables(results, metrics=metrics, comparison=len(results) == 2)
+        """,  # noqa: E501
         'inputs': [],
     },
     {
@@ -320,14 +452,14 @@ _test_template_cells: notebook_io.NotebookTemplate = [
         'content': """
             # show result figures
 
-            colors = flood.get_nodes_plot_colors(nodes=results_payload['nodes'])
-            flood.plot_load_test_results(
+            colors = flood.user_io.get_nodes_plot_colors(nodes=results_payload['nodes'])
+            flood.tests.load_tests.plot_load_test_results(
                 test_name=test_name,
                 outputs=results,
                 latency_yscale_log=True,
                 colors=colors,
             )
-        """,
+        """,  # noqa: E501
         'inputs': [],
     },
     {
@@ -372,3 +504,4 @@ _test_template_cells: notebook_io.NotebookTemplate = [
         'inputs': [],
     },
 ]
+

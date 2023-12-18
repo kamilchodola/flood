@@ -45,7 +45,7 @@ def get_vanilla_equality_tests(
 ) -> typing.Sequence[flood.EqualityTest]:
     import ctc.rpc
 
-    start_block, end_block = block_generators.generate_block_ranges(
+    start_block, end_block = flood.generators.generate_block_ranges(
         n=1,
         range_size=range_size,
         start_block=start_block,
@@ -190,9 +190,24 @@ def get_trace_equality_tests(
     transaction_hash: str = '0xd01212e8ab48d2fd2ea9c4f33f8670fd1cf0cfb09d2e3c6ceddfaf54152386e5', # noqa: E501
     random_seed: flood.RandomSeed | None = None,
 ) -> typing.Sequence[flood.EqualityTest]:
+    """
+    ## Trace
+    https://docs.alchemy.com/reference/trace-api
+    https://www.quicknode.com/docs/ethereum/trace_rawTransaction
+    https://openethereum.github.io/JSONRPC-trace-module
+
+    ## Debug
+    https://docs.alchemy.com/reference/debug-api-endpoints
+    https://www.quicknode.com/docs/ethereum/debug_traceBlockByNumber
+
+    not currently testing:
+    - trace_rawTransaction (not sure whether this is working in Erigon)
+    - trace_filter
+    - trace_get
+    """
     import ctc.rpc
 
-    block_number = block_generators.generate_block_numbers(
+    block_number = flood.generators.generate_block_numbers(
         n=1,
         start_block=start_block,
         end_block=end_block,
@@ -211,6 +226,14 @@ def get_trace_equality_tests(
 
     return [
         (
+            'trace_transaction',
+            ctc.rpc.construct_trace_transaction,
+            [
+                '0xd01212e8ab48d2fd2ea9c4f33f8670fd1cf0cfb09d2e3c6ceddfaf54152386e5'  # noqa: E501
+            ],
+            {},
+        ),
+        (
             'trace_block',
             ctc.rpc.construct_trace_block,
             [],
@@ -223,6 +246,34 @@ def get_trace_equality_tests(
             {
                 'to_address': '0x6b175474e89094c44da98b954eedeac495271d0f',
                 'trace_type': ['trace'],
+                'function_abi': function_abi,
+                'function_parameters': [
+                    '0x5d3a536e4d6dbd6114cc1ead35777bab948e3643'
+                ],
+                'block_number': block_number,
+            },
+        ),
+        (
+            'trace_call_state_diff',
+            ctc.rpc.construct_trace_call,
+            [],
+            {
+                'to_address': '0x6b175474e89094c44da98b954eedeac495271d0f',
+                'trace_type': ['stateDiff'],
+                'function_abi': function_abi,
+                'function_parameters': [
+                    '0x5d3a536e4d6dbd6114cc1ead35777bab948e3643'
+                ],
+                'block_number': block_number,
+            },
+        ),
+        (
+            'trace_call_vm_trace',
+            ctc.rpc.construct_trace_call,
+            [],
+            {
+                'to_address': '0x6b175474e89094c44da98b954eedeac495271d0f',
+                'trace_type': ['vmTrace'],
                 'function_abi': function_abi,
                 'function_parameters': [
                     '0x5d3a536e4d6dbd6114cc1ead35777bab948e3643'
@@ -246,6 +297,42 @@ def get_trace_equality_tests(
                     },
                 ],
                 'trace_type': ['trace'],
+            },
+        ),
+        (
+            'trace_call_many_state_diff',
+            ctc.rpc.construct_trace_call_many,
+            [],
+            {
+                'calls': [
+                    {
+                        'to_address': '0x6b175474e89094c44da98b954eedeac495271d0f',  # noqa: E501
+                        'function_abi': function_abi,
+                        'function_parameters': [
+                            '0x5d3a536e4d6dbd6114cc1ead35777bab948e3643'
+                        ],
+                        'trace_type': ['stateDiff'],
+                    },
+                ],
+                'trace_type': ['stateDiff'],
+            },
+        ),
+        (
+            'trace_call_many_vm_trace',
+            ctc.rpc.construct_trace_call_many,
+            [],
+            {
+                'calls': [
+                    {
+                        'to_address': '0x6b175474e89094c44da98b954eedeac495271d0f',  # noqa: E501
+                        'function_abi': function_abi,
+                        'function_parameters': [
+                            '0x5d3a536e4d6dbd6114cc1ead35777bab948e3643'
+                        ],
+                        'trace_type': ['vmTrace'],
+                    },
+                ],
+                'trace_type': ['vmTrace'],
             },
         ),
         #     (
@@ -281,6 +368,24 @@ def get_trace_equality_tests(
             },
         ),
         (
+            'trace_replay_block_transactions_state_diff',
+            ctc.rpc.construct_trace_replay_block_transactions,
+            [],
+            {
+                'block_number': block_number,
+                'trace_type': ['stateDiff'],
+            },
+        ),
+        (
+            'trace_replay_block_transactions_vm_traces',
+            ctc.rpc.construct_trace_replay_block_transactions,
+            [],
+            {
+                'block_number': block_number,
+                'trace_type': ['vmTrace'],
+            },
+        ),
+        (
             'trace_replay_transaction',
             ctc.rpc.construct_trace_replay_transaction,
             [
@@ -289,11 +394,99 @@ def get_trace_equality_tests(
             {'trace_type': ['trace']},
         ),
         (
-            'trace_transaction',
-            ctc.rpc.construct_trace_transaction,
+            'trace_replay_transaction_state_diff',
+            ctc.rpc.construct_trace_replay_transaction,
+            [
+                '0xd01212e8ab48d2fd2ea9c4f33f8670fd1cf0cfb09d2e3c6ceddfaf54152386e5'  # noqa: E501
+            ],
+            {'trace_type': ['stateDiff']},
+        ),
+        (
+            'trace_replay_transaction_vm_trace',
+            ctc.rpc.construct_trace_replay_transaction,
             [
                 transaction_hash
+            ],
+            {'trace_type': ['vmTrace']},
+        ),
+        # debug
+        (
+            'debug_traceBlockByHash',
+            ctc.rpc.construct_debug_trace_block_by_hash,
+            [
+                "0x97b49e43632ac70c46b4003434058b18db0ad809617bd29f3448d46ca9085576",
+                {"tracer": "callTracer", 'tracerConfig': {}},
+            ],
+            {},
+        ),
+        (
+            'debug_traceBlockByHash_prestateTracer',
+            ctc.rpc.construct_debug_trace_block_by_hash,
+            [
+                "0x97b49e43632ac70c46b4003434058b18db0ad809617bd29f3448d46ca9085576",
+                {"tracer": "prestateTracer"},
+            ],
+            {},
+        ),
+        (
+            'debug_traceBlockByNumber',
+            ctc.rpc.construct_debug_trace_block_by_number,
+            [
+                '0xccde12',
+                {'tracer': 'callTracer', 'tracerConfig': {}},
+            ],
+            {},
+        ),
+        (
+            'debug_traceBlockByNumber_prestateTracer',
+            ctc.rpc.construct_debug_trace_block_by_number,
+            [
+                '0xccde12',
+                {'tracer': 'prestateTracer'},
+            ],
+            {},
+        ),
+        (
+            'debug_traceCall',
+            ctc.rpc.construct_debug_trace_call,
+            [],
+            {
+                'to_address': '0x6b175474e89094c44da98b954eedeac495271d0f',
+                'call_data': '0x70a082310000000000000000000000006e0d01a76c3cf4288372a29124a26d4353ee51be',  # noqa: E501
+                'block_number': '0xc65d40',
+                'gas_price': '0x6ba9382b14',
+                'trace_type': {'tracer': 'callTracer'},
+            },
+        ),
+        (
+            'debug_traceCall_prestateTracer',
+            ctc.rpc.construct_debug_trace_call,
+            [],
+            {
+                'to_address': '0x6b175474e89094c44da98b954eedeac495271d0f',
+                'call_data': '0x70a082310000000000000000000000006e0d01a76c3cf4288372a29124a26d4353ee51be',  # noqa: E501
+                'block_number': '0xc65d40',
+                'gas_price': '0x6ba9382b14',
+                'trace_type': {'tracer': 'prestateTracer'},
+            },
+        ),
+        (
+            'debug_traceTransaction',
+            ctc.rpc.construct_debug_trace_transaction,
+            [
+                '0x9e63085271890a141297039b3b711913699f1ee4db1acb667ad7ce304772036b',
+                {'tracer': 'callTracer', 'tracerConfig': {}},
+            ],
+            {},
+        ),
+        (
+            'debug_traceTransaction_prestateTracer',
+            ctc.rpc.construct_debug_trace_transaction,
+            [
+                '0x9e63085271890a141297039b3b711913699f1ee4db1acb667ad7ce304772036b',
+                {'tracer': 'prestateTracer', 'tracerConfig': {}},
             ],
             {},
         ),
     ]
+

@@ -18,25 +18,32 @@ def _run_single(
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
     mode: flood.LoadTestMode | None = None,
-    vegeta_kwargs: flood.VegetaKwargsShorthand | None = None,
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
     dry: bool,
-    output_dir: str | None = None,
+    output_dir: str,
     figures: bool,
     metrics: typing.Sequence[str] | None = None,
     verbose: bool | int,
-    include_raw_output: bool = False,
+    include_deep_output: typing.Sequence[flood.DeepOutput] | None = None,
     deep_check: bool = False,
-) -> None:
-    if deep_check:
-        include_raw_output = True
+) -> flood.SingleRunOutput:
+    import time
+
+    t_start = time.time()
+
+    if include_deep_output is None:
+        include_deep_output = []
+    if deep_check and 'metrics' not in include_deep_output:
+        include_deep_output = list(include_deep_output) + ['metrics']
 
     # get test parameters
-    rates, durations, vegeta_kwargs = _get_single_test_parameters(
+    rates, durations, vegeta_args = _get_single_test_parameters(
         test=test,
         rates=rates,
         duration=duration,
         durations=durations,
         mode=mode,
+        vegeta_args=vegeta_args,
     )
 
     # print preamble
@@ -46,113 +53,82 @@ def _run_single(
             rerun_of=rerun_of,
             rates=rates,
             durations=durations,
-            vegeta_kwargs=vegeta_kwargs,
+            vegeta_args=vegeta_args,
             output_dir=output_dir,
         )
 
     # parse nodes
-    nodes = flood.parse_nodes(nodes, verbose=verbose, request_metadata=True)
+    nodes = flood.user_io.parse_nodes(
+        nodes, verbose=verbose, request_metadata=True
+    )
 
     # generate test and save to disk
+    use_test: flood.LoadTest | flood.TestGenerationParameters
+    test_parameters: flood.TestGenerationParameters
     if test is None:
-        test = flood.generate_test(
+        test_parameters = {
+            'flood_version': flood.get_flood_version(),
+            'test_name': test_name,
+            'rates': rates,
+            'durations': durations,
+            'vegeta_args': vegeta_args,
+            'network': flood.user_io.parse_nodes_network(nodes),
+            'random_seed': random_seed,
+        }
+        flood.runners.single_runner.single_runner_io._save_single_run_test(
             test_name=test_name,
-            rates=rates,
-            durations=durations,
-            vegeta_kwargs=vegeta_kwargs,
-            network=flood.parse_nodes_network(nodes),
-            random_seed=random_seed,
             output_dir=output_dir,
+            test_parameters=test_parameters,
         )
+        use_test = test_parameters
+    else:
+        test_parameters = test['test_parameters']
+        use_test = test
 
     # skip dry run
     if dry:
         print()
         print('[dry run, exitting]')
-        return
+        return  # type: ignore
 
     # run tests
     if verbose:
         single_runner_summary._print_run_start()
     results = flood.run_load_tests(
         nodes=nodes,
-        test=test,
+        test=use_test,
         verbose=verbose,
-        include_raw_output=include_raw_output,
+        include_deep_output=include_deep_output,
     )
 
     # output results to file
-    if output_dir is not None:
-        single_runner_io._save_single_run_results(
-            output_dir=output_dir,
-            test=test,
-            nodes=nodes,
-            results=results,
-            figures=figures,
-            test_name=test_name,
-        )
-
-    # perform deep check
-    if deep_check:
-        _perform_deep_check(results, verbose=verbose)
+    payload = single_runner_io._save_single_run_results(
+        output_dir=output_dir,
+        nodes=nodes,
+        results=results,
+        figures=figures,
+        test_name=test_name,
+        t_run_start=t_start,
+        t_run_end=time.time(),
+    )
 
     # print summary
     if verbose:
-        single_runner_summary._print_single_run_conclusion_copy(
+        single_runner_summary._print_single_run_conclusion(
             output_dir=output_dir,
             results=results,
             metrics=metrics,
             verbose=verbose,
             figures=figures,
+            deep_check=deep_check,
         )
 
-
-#
-# # helper functions
-#
-
-
-def _perform_deep_check(
-    results: typing.Mapping[str, flood.LoadTestOutput],
-    verbose: bool | int = False,
-) -> None:
-    """
-    check that responses for each success are
-    1) well-formed json
-    and 2) error = None
-    """
-    import base64
-    import json
-
-    errors = False
-
-    raw_output = flood.load_single_run_raw_output(results=results)
-    for result_name, result in raw_output.items():
-        for status_code, response in zip(
-            result['status_code'], result['response'].to_list()
-        ):
-            if status_code == 200:
-                try:
-                    decoded = json.loads(base64.b64decode(response))
-                    if decoded.get('result') is None:
-                        errors = True
-                except Exception:
-                    errors = True
-
-            if errors:
-                break
-        if errors:
-            break
-
-    if verbose:
-        print()
-        if errors:
-            flood.print_timestamped('[deep check failed]')
-        else:
-            flood.print_timestamped('[deep check passed]')
-
-    if errors:
-        raise Exception('some calls that were reported successful had bad data')
+    return {
+        'output_dir': output_dir,
+        'test': test,
+        'test_parameters': test_parameters,
+        'payload': payload,
+    }
 
 
 def _get_single_test_parameters(
@@ -161,23 +137,23 @@ def _get_single_test_parameters(
     duration: int | None = None,
     durations: typing.Sequence[int] | None = None,
     mode: flood.LoadTestMode | None = None,
-    vegeta_kwargs: flood.VegetaKwargsShorthand | None = None,
+    vegeta_args: flood.VegetaArgsShorthand | None = None,
 ) -> tuple[
     typing.Sequence[int],
     typing.Sequence[int],
-    flood.VegetaKwargsShorthand | None,
+    flood.VegetaArgsShorthand | None,
 ]:
     if test is not None:
-        test_data = flood.parse_test_data(test=test)
+        test_data = flood.user_io.parse_test_data(test=test)
         rates = test_data['rates']
         durations = test_data['durations']
-        vegeta_kwargs = test_data['vegeta_kwargs']
+        vegeta_args = test_data['vegeta_args']
     else:
-        rates, durations = flood.generate_timings(
+        rates, durations = flood.generators.generate_timings(
             rates=rates,
             duration=duration,
             durations=durations,
             mode=mode,
         )
-    return rates, durations, vegeta_kwargs
+    return rates, durations, vegeta_args
 
