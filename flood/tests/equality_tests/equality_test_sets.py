@@ -188,6 +188,7 @@ def get_trace_equality_tests(
     end_block: int = 16_000_000,
     transaction_hash: str = '0xd01212e8ab48d2fd2ea9c4f33f8670fd1cf0cfb09d2e3c6ceddfaf54152386e5', # noqa: E501
     random_seed: flood.RandomSeed | None = None,
+    block_hash: str = '0x9e63085271890a141297039b3b711913699f1ee4db1acb667ad7ce304772036b',
 ) -> typing.Sequence[flood.EqualityTest]:
     """
     ## Trace
@@ -228,7 +229,7 @@ def get_trace_equality_tests(
             'trace_transaction',
             ctc.rpc.construct_trace_transaction,
             [
-                '0xd01212e8ab48d2fd2ea9c4f33f8670fd1cf0cfb09d2e3c6ceddfaf54152386e5'  # noqa: E501
+                transaction_hash
             ],
             {},
         ),
@@ -396,15 +397,7 @@ def get_trace_equality_tests(
             'trace_replay_transaction_state_diff',
             ctc.rpc.construct_trace_replay_transaction,
             [
-                '0xd01212e8ab48d2fd2ea9c4f33f8670fd1cf0cfb09d2e3c6ceddfaf54152386e5'  # noqa: E501
-            ],
-            {'trace_type': ['stateDiff']},
-        ),
-        (
-            'trace_replay_transaction_vm_trace',
-            ctc.rpc.construct_trace_replay_transaction,
-            [
-                '0xd01212e8ab48d2fd2ea9c4f33f8670fd1cf0cfb09d2e3c6ceddfaf54152386e5'  # noqa: E501
+                transaction_hash
             ],
             {'trace_type': ['stateDiff']},
         ),
@@ -421,7 +414,7 @@ def get_trace_equality_tests(
             'debug_traceBlockByHash',
             ctc.rpc.construct_debug_trace_block_by_hash,
             [
-                "0x97b49e43632ac70c46b4003434058b18db0ad809617bd29f3448d46ca9085576",
+                block_hash,
                 {"tracer": "callTracer", 'tracerConfig': {}},
             ],
             {},
@@ -430,7 +423,7 @@ def get_trace_equality_tests(
             'debug_traceBlockByHash_prestateTracer',
             ctc.rpc.construct_debug_trace_block_by_hash,
             [
-                "0x97b49e43632ac70c46b4003434058b18db0ad809617bd29f3448d46ca9085576",
+                block_hash,
                 {"tracer": "prestateTracer"},
             ],
             {},
@@ -439,7 +432,7 @@ def get_trace_equality_tests(
             'debug_traceBlockByNumber',
             ctc.rpc.construct_debug_trace_block_by_number,
             [
-                '0xccde12',
+                block_number,
                 {'tracer': 'callTracer', 'tracerConfig': {}},
             ],
             {},
@@ -448,7 +441,7 @@ def get_trace_equality_tests(
             'debug_traceBlockByNumber_prestateTracer',
             ctc.rpc.construct_debug_trace_block_by_number,
             [
-                '0xccde12',
+                block_number,
                 {'tracer': 'prestateTracer'},
             ],
             {},
@@ -460,7 +453,7 @@ def get_trace_equality_tests(
             {
                 'to_address': '0x6b175474e89094c44da98b954eedeac495271d0f',
                 'call_data': '0x70a082310000000000000000000000006e0d01a76c3cf4288372a29124a26d4353ee51be',  # noqa: E501
-                'block_number': '0xc65d40',
+                'block_number': block_number,
                 'gas_price': '0x6ba9382b14',
                 'trace_type': {'tracer': 'callTracer'},
             },
@@ -472,7 +465,7 @@ def get_trace_equality_tests(
             {
                 'to_address': '0x6b175474e89094c44da98b954eedeac495271d0f',
                 'call_data': '0x70a082310000000000000000000000006e0d01a76c3cf4288372a29124a26d4353ee51be',  # noqa: E501
-                'block_number': '0xc65d40',
+                'block_number': block_number,
                 'gas_price': '0x6ba9382b14',
                 'trace_type': {'tracer': 'prestateTracer'},
             },
@@ -481,7 +474,7 @@ def get_trace_equality_tests(
             'debug_traceTransaction',
             ctc.rpc.construct_debug_trace_transaction,
             [
-                '0x9e63085271890a141297039b3b711913699f1ee4db1acb667ad7ce304772036b',
+                block_hash,
                 {'tracer': 'callTracer', 'tracerConfig': {}},
             ],
             {},
@@ -490,7 +483,7 @@ def get_trace_equality_tests(
             'debug_traceTransaction_prestateTracer',
             ctc.rpc.construct_debug_trace_transaction,
             [
-                '0x9e63085271890a141297039b3b711913699f1ee4db1acb667ad7ce304772036b',
+                block_hash,
                 {'tracer': 'prestateTracer', 'tracerConfig': {}},
             ],
             {},
