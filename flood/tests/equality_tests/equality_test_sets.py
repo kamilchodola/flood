@@ -474,7 +474,7 @@ def get_trace_equality_tests(
             'debug_traceTransaction',
             ctc.rpc.construct_debug_trace_transaction,
             [
-                block_hash,
+                transaction_hash,
                 {'tracer': 'callTracer', 'tracerConfig': {}},
             ],
             {},
@@ -483,7 +483,7 @@ def get_trace_equality_tests(
             'debug_traceTransaction_prestateTracer',
             ctc.rpc.construct_debug_trace_transaction,
             [
-                block_hash,
+                transaction_hash,
                 {'tracer': 'prestateTracer', 'tracerConfig': {}},
             ],
             {},
