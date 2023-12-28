@@ -4,7 +4,6 @@ import typing
 import random
 
 import flood
-from flood import block_generators
 from flood.tests.equality_tests.input_generator import BLOCK_RANGE
 
 
@@ -395,6 +394,14 @@ def get_trace_equality_tests(
         ),
         (
             'trace_replay_transaction_state_diff',
+            ctc.rpc.construct_trace_replay_transaction,
+            [
+                '0xd01212e8ab48d2fd2ea9c4f33f8670fd1cf0cfb09d2e3c6ceddfaf54152386e5'  # noqa: E501
+            ],
+            {'trace_type': ['stateDiff']},
+        ),
+        (
+            'trace_replay_transaction_vm_trace',
             ctc.rpc.construct_trace_replay_transaction,
             [
                 '0xd01212e8ab48d2fd2ea9c4f33f8670fd1cf0cfb09d2e3c6ceddfaf54152386e5'  # noqa: E501
