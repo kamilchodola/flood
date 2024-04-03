@@ -32,8 +32,8 @@ def get_block_range_and_tx(nodes):
 
     latest = get_latest_block(node_urls[0])
 
-    start_block = latest
-    end_block = start_block + BLOCK_RANGE
+    start_block = start_block + BLOCK_RANGE
+    end_block = latest
 
     response = get_block_and_ensure_it_exists(node_urls, start_block)
     get_block_and_ensure_it_exists(node_urls, end_block)
