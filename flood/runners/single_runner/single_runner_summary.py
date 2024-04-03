@@ -227,7 +227,7 @@ def _print_single_run_conclusion_text(
                     ] = category_results
             else:
                 raise Exception('deep metrics not available')
-
+        print('test')
         print()
         flood.user_io.print_metric_tables(
             results=deep_results_by_category['failed'],
