@@ -229,20 +229,21 @@ def _print_single_run_conclusion_text(
             else:
                 raise Exception('deep metrics not available')
         print()
-        print("test1")
+        print("test logs:")
+        print(deep_results_by_category['failed'])
+        print(['n_invalid_json_errors'])
+
         flood.user_io.print_metric_tables(
             results=deep_results_by_category['failed'],
             metrics=['n_invalid_json_errors'],
             indent=4,
         )
         print()
-        print("test2")
         flood.user_io.print_metric_tables(
             results=deep_results_by_category['failed'],
             metrics=['n_rpc_errors'],
             indent=4,
         )
-        print("test3")
 
         metric_names = [
             m for m in metrics if m not in ['success', 'throughput']
@@ -258,4 +259,3 @@ def _print_single_run_conclusion_text(
                 suffix=', ' + category + ' calls',
                 indent=4,
             )
-        print("test4")
