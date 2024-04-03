@@ -210,6 +210,7 @@ def _print_single_run_conclusion_text(
         print()
         print()
         flood.user_io.print_header('Deep inspection of responses...')
+        print('test')
 
         # extract data per category
         deep_results_by_category: typing.MutableMapping[
@@ -217,7 +218,6 @@ def _print_single_run_conclusion_text(
             typing.MutableMapping[str, flood.LoadTestDeepOutput],
         ]
         
-        print('test')
         deep_results_by_category = {}
         for result_name, result in results.items():
             deep_metrics = result['deep_metrics']
