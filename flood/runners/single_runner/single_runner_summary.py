@@ -238,12 +238,12 @@ def _print_single_run_conclusion_text(
         #    metrics=['n_invalid_json_errors'],
         #    indent=4,
         #)
-        print()
-        flood.user_io.print_metric_tables(
-            results=deep_results_by_category['failed'],
-            metrics=['n_rpc_errors'],
-            indent=4,
-        )
+        #print()
+        #flood.user_io.print_metric_tables(
+        #    results=deep_results_by_category['failed'],
+        #    metrics=['n_rpc_errors'],
+        #    indent=4,
+        #)
 
         metric_names = [
             m for m in metrics if m not in ['success', 'throughput']
