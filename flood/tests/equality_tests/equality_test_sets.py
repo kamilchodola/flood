@@ -228,7 +228,7 @@ def get_trace_equality_tests(
             'trace_transaction',
             ctc.rpc.construct_trace_transaction,
             [
-                '0xd01212e8ab48d2fd2ea9c4f33f8670fd1cf0cfb09d2e3c6ceddfaf54152386e5'  # noqa: E501
+                transaction_hash  # noqa: E501
             ],
             {},
         ),
