@@ -175,8 +175,8 @@ def get_vanilla_equality_tests(
             'eth_feeHistory',
             ctc.rpc.construct_eth_fee_history,
             [
-                BLOCK_RANGE,
                 int(start_block),
+                BLOCK_RANGE
             ],
             {},
         ),
