@@ -4,7 +4,6 @@ import typing
 import random
 
 import flood
-from flood.tests.equality_tests.input_generator import BLOCK_RANGE
 
 
 def get_all_equality_tests(
@@ -176,7 +175,7 @@ def get_vanilla_equality_tests(
             ctc.rpc.construct_eth_fee_history,
             [
                 int(start_block),
-                BLOCK_RANGE
+                64
             ],
             {},
         ),
