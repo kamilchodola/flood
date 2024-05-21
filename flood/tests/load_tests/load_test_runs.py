@@ -63,6 +63,11 @@ def run_load_tests(
 
     # case: multiple nodes and single tests
     elif nodes is not None and test is not None:
+        
+        # generate test content early so that it can be passed to remote nodes in exact same way
+        if 'attacks' not in test:
+            test = flood.generate_test(**test)
+
         for name, nd in tqdm.tqdm(nodes.items(), **pbar):
             results[name] = schedule_load_test(
                 node=nd,
@@ -73,12 +78,15 @@ def run_load_tests(
 
     # case: multiple nodes and multiple tests
     elif nodes is not None and tests is not None:
+        # generate test content early so that it can be passed to remote nodes in exact same way
+        if 'attacks' not in test:
+            use_test = flood.generate_test(**test)
         for node_name, node in nodes.items():
             for test_name, test in tests.items():
                 results[node_name + '__' + test_name] = schedule_load_test(
                     node=node,
                     verbose=verbose,
-                    test=test,
+                    test=use_test,
                     include_deep_output=include_deep_output,
                 )
 
