@@ -273,7 +273,7 @@ def generate_calls_eth_get_logs(
         if n_calls is None:
             raise Exception('must floodify more parameters')
         if block_range_size is None:
-            block_range_size = 100
+            block_range_size = 64
         block_ranges = block_generators.generate_block_ranges(
             start_block=start_block,
             end_block=end_block,
